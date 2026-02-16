@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WhatsApp Logger M3</title>
+    
+    <!-- SVG Favicon -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='30' fill='%23006C4C'/%3E%3Cpath d='M30 35C30 32.2386 32.2386 30 35 30H65C67.7614 30 70 32.2386 70 35V55C70 57.7614 67.7614 60 65 60H45L30 70V35Z' fill='white'/%3E%3Ccircle cx='42' cy='45' r='3' fill='%23006C4C'/%3E%3Ccircle cx='50' cy='45' r='3' fill='%23006C4C'/%3E%3Ccircle cx='58' cy='45' r='3' fill='%23006C4C'/%3E%3C/svg%3E">
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            /* M3 Light Theme Tokens - Nature/Mint Palette */
+            --md-sys-color-primary: #006C4C;
+            --md-sys-color-on-primary: #FFFFFF;
+            --md-sys-color-primary-container: #89F8C7;
+            --md-sys-color-on-primary-container: #002114;
+            
+            --md-sys-color-secondary: #4D6357;
+            --md-sys-color-on-secondary: #FFFFFF;
+            --md-sys-color-secondary-container: #CFE9D9;
+            --md-sys-color-on-secondary-container: #092016;
+            
+            --md-sys-color-surface: #FBFDF9;
+            --md-sys-color-surface-dim: #D9DBD9;
+            --md-sys-color-surface-container: #ECEEEB;
+            --md-sys-color-surface-container-high: #E6E8E5;
+            
+            --md-sys-color-on-surface: #191C1A;
+            --md-sys-color-on-surface-variant: #404944;
+            --md-sys-color-outline: #707974;
+            --md-sys-color-outline-variant: #BFC9C2;
+
+            --md-sys-color-error: #BA1A1A;
+            
+            /* WhatsApp Specifics */
+            --chat-bubble-me: #E2FFEC;
+            --chat-bubble-them: #FFFFFF;
+            
+            /* Elevations & Shapes */
+            --elevation-1: 0px 1px 3px 1px rgba(0,0,0,0.15), 0px 1px 2px 0px rgba(0,0,0,0.3);
+            --elevation-2: 0px 2px 6px 2px rgba(0,0,0,0.15), 0px 1px 2px 0px rgba(0,0,0,0.3);
+            --shape-corner-extra-large: 28px;
+            --shape-corner-large: 16px;
+            --shape-corner-medium: 12px;
+
+            /* Motion */
+            --motion-easing-emphasized: cubic-bezier(0.2, 0.0, 0.0, 1.0);
+            --motion-duration-medium: 400ms;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* --- ANIMATIONS --- */
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.4s var(--motion-easing-emphasized); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .stagger-enter { opacity: 0; transform: translateY(15px); animation: staggerSlideUp 0.5s var(--motion-easing-emphasized) forwards; }
+        @keyframes staggerSlideUp { to { opacity: 1; transform: translateY(0); } }
+        
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+        /* --- RIPPLE EFFECT --- */
+        .ripple-surface {
+            position: relative;
+            overflow: hidden;
+            transform: translate3d(0, 0, 0);
+            transition: transform 0.1s;
+        }
+        .ripple-surface:active { transform: scale(0.98); }
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.1);
+            transform: scale(0);
+            animation: ripple-anim 0.6s linear;
+            pointer-events: none;
+        }
+        @keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
+
+        /* --- AUTH SCREEN --- */
+        #auth-screen {
+            position: fixed; inset: 0; z-index: 999;
+            background: radial-gradient(circle at 50% 10%, #E6F7EF 0%, var(--md-sys-color-surface) 60%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 24px;
+        }
+        
+        .auth-card {
+            width: 100%; max-width: 400px;
+            text-align: center;
+        }
+
+        .brand-icon {
+            width: 80px; height: 80px;
+            display: inline-flex; align-items: center; justify-content: center;
+            margin-bottom: 24px;
+            animation: float 6s ease-in-out infinite;
+        }
+        .brand-icon svg { width: 100%; height: 100%; filter: drop-shadow(0 4px 12px rgba(0, 108, 76, 0.2)); }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+        .m3-field {
+            position: relative; margin-bottom: 16px;
+            background: var(--md-sys-color-surface-container-high);
+            border-radius: 4px 4px 0 0;
+            border-bottom: 1px solid var(--md-sys-color-outline);
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .m3-field:focus-within { 
+            border-bottom: 2px solid var(--md-sys-color-primary); 
+            background: var(--md-sys-color-surface-container); 
+        }
+        
+        .m3-input {
+            width: 100%; padding: 24px 48px 8px 16px;
+            border: none; background: transparent; outline: none;
+            font-size: 16px; color: var(--md-sys-color-on-surface);
+            font-family: inherit;
+        }
+        .m3-label {
+            position: absolute; left: 16px; top: 18px;
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 16px; pointer-events: none; transition: 0.2s;
+        }
+        .m3-input:focus ~ .m3-label, .m3-input:not(:placeholder-shown) ~ .m3-label {
+            top: 6px; font-size: 12px; color: var(--md-sys-color-primary);
+        }
+        
+        .eye-toggle {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            border: none; background: none; cursor: pointer;
+            color: var(--md-sys-color-on-surface-variant);
+            padding: 8px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .eye-toggle:hover { background: rgba(0,0,0,0.05); color: var(--md-sys-color-on-surface); }
+
+        .m3-btn {
+            width: 100%; height: 56px; border-radius: 28px;
+            border: none; outline: none; cursor: pointer;
+            font-family: 'Google Sans', sans-serif; font-weight: 500; font-size: 16px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: 0.2s;
+        }
+        .m3-btn.filled {
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            box-shadow: var(--elevation-1);
+        }
+        .m3-btn.filled:hover { box-shadow: var(--elevation-2); background: #005A3F; transform: translateY(-1px); }
+        .m3-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* --- APP LAYOUT --- */
+        #app-layout {
+            display: flex; width: 100%; height: 100%; max-width: 1600px;
+            background: var(--md-sys-color-surface);
+            opacity: 0; transition: opacity 0.6s ease-in-out;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 400px; display: flex; flex-direction: column;
+            border-right: 1px solid var(--md-sys-color-outline-variant);
+            background: var(--md-sys-color-surface);
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .search-container { padding: 0 16px 12px; }
+        .search-bar {
+            background: var(--md-sys-color-surface-container-high);
+            border-radius: 28px; height: 48px;
+            display: flex; align-items: center; padding: 0 16px;
+            transition: 0.3s;
+        }
+        .search-bar:focus-within { background: var(--md-sys-color-surface-container); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        .search-bar input {
+            border: none; background: transparent; outline: none;
+            flex: 1; font-size: 16px; margin-left: 12px;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .contact-list {
+            flex: 1; overflow-y: auto; overflow-x: hidden;
+            padding: 8px;
+        }
+
+        .contact-item {
+            display: flex; align-items: center; padding: 12px 16px;
+            border-radius: 16px; cursor: pointer;
+            transition: background 0.2s, transform 0.1s; margin-bottom: 2px;
+        }
+        .contact-item:hover { background: rgba(0,0,0,0.03); }
+        .contact-item.active { background: var(--md-sys-color-secondary-container); }
+        .contact-item.active .contact-name { color: var(--md-sys-color-on-secondary-container); font-weight: 700; }
+        
+        .avatar {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 500; flex-shrink: 0;
+            margin-right: 16px;
+            transition: transform 0.3s;
+        }
+        .contact-item:hover .avatar { transform: scale(1.05); }
+        
+        .contact-info { flex: 1; min-width: 0; }
+        .contact-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .contact-name { font-size: 16px; font-weight: 500; color: var(--md-sys-color-on-surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .contact-time { font-size: 12px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap; margin-left: 8px;}
+        .contact-sub { font-size: 14px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* --- CHAT AREA --- */
+        .chat-area {
+            flex: 1; display: flex; flex-direction: column;
+            position: relative;
+            background-color: #EFE7DE;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%236e7874' fill-opacity='0.08' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
+
+        .chat-header {
+            height: 64px;
+            background: rgba(251, 253, 249, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex; align-items: center; padding: 0 16px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            z-index: 5;
+        }
+
+        .chat-content {
+            flex: 1; overflow-y: auto; padding: 16px;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+
+        /* Messages */
+        .date-divider {
+            align-self: center;
+            background: var(--md-sys-color-surface-container-high);
+            color: var(--md-sys-color-on-surface-variant);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px; font-weight: 500;
+            margin: 16px 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .msg-bubble {
+            max-width: 80%;
+            padding: 8px 12px;
+            position: relative;
+            font-size: 15px; line-height: 1.4;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            animation: popIn 0.3s var(--motion-easing-emphasized);
+            display: flex; flex-direction: column;
+        }
+        
+        .msg-in {
+            align-self: flex-start;
+            background: var(--chat-bubble-them);
+            border-radius: 0 16px 16px 16px;
+            color: var(--md-sys-color-on-surface);
+        }
+        .msg-out {
+            align-self: flex-end;
+            background: var(--chat-bubble-me);
+            border-radius: 16px 0 16px 16px;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .msg-sender { font-size: 12px; font-weight: 700; color: var(--md-sys-color-primary); margin-bottom: 2px; }
+        .msg-meta { font-size: 10px; opacity: 0.6; align-self: flex-end; margin-top: 2px; margin-left: 8px; display: inline-flex; align-items: center; gap: 2px; }
+        
+        @keyframes popIn { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        /* Icon Buttons */
+        .icon-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            border: none; background: transparent; cursor: pointer;
+            color: var(--md-sys-color-on-surface-variant);
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s;
+        }
+        .icon-btn:hover { background: rgba(0,0,0,0.05); color: var(--md-sys-color-on-surface); }
+        .back-btn { display: none; margin-right: 8px; }
+
+        /* Empty State */
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; color: var(--md-sys-color-outline);
+            text-align: center;
+            animation: fadeIn 0.5s;
+        }
+
+        /* --- SKELETON LOADER --- */
+        .skeleton-wrapper { width: 100%; }
+        .skeleton {
+            background: linear-gradient(90deg, #f0f2f0 25%, #f7f9f7 50%, #f0f2f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+            border-radius: 4px;
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* Specific Skeleton Items */
+        .skel-contact { display: flex; align-items: center; padding: 12px 16px; gap: 16px; }
+        .skel-avatar { width: 48px; height: 48px; border-radius: 50%; }
+        .skel-text-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+        
+        .skel-chat { display: flex; flex-direction: column; gap: 16px; padding: 20px; }
+        .skel-bubble { height: 40px; border-radius: 12px; width: 40%; }
+        .skel-left { align-self: flex-start; border-bottom-left-radius: 0; }
+        .skel-right { align-self: flex-end; border-bottom-right-radius: 0; width: 50%; }
+
+        /* --- MOBILE ADAPTATION --- */
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; flex: 1; border-right: none; }
+            .chat-area { 
+                position: fixed; inset: 0; z-index: 20; 
+                transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.2, 0, 0, 1);
+            }
+            .chat-area.active { transform: translateX(0); }
+            .back-btn { display: flex; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AUTHENTICATION OVERLAY -->
+    <div id="auth-screen">
+        <div class="auth-card">
+            <div class="brand-icon stagger-enter">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="100" height="100" rx="30" fill="#006C4C"/>
+                    <path d="M30 35C30 32.2386 32.2386 30 35 30H65C67.7614 30 70 32.2386 70 35V55C70 57.7614 67.7614 60 65 60H45L30 70V35Z" fill="white"/>
+                    <circle cx="42" cy="45" r="3" fill="#006C4C"/>
+                    <circle cx="50" cy="45" r="3" fill="#006C4C"/>
+                    <circle cx="58" cy="45" r="3" fill="#006C4C"/>
+                </svg>
+            </div>
+            <h1 class="stagger-enter delay-1" style="font-family: 'Google Sans'; margin-bottom: 8px; color: var(--md-sys-color-on-surface);">Welcome Back</h1>
+            <p class="stagger-enter delay-1" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 32px;">Enter your credentials to access logs</p>
+            
+            <div class="m3-field stagger-enter delay-2">
+                <input type="text" id="username" class="m3-input" placeholder=" " autocomplete="off">
+                <label class="m3-label">Username</label>
+            </div>
+            
+            <div class="m3-field stagger-enter delay-3">
+                <input type="password" id="password" class="m3-input" placeholder=" ">
+                <label class="m3-label">Password</label>
+                <button class="eye-toggle" onclick="togglePasswordVisibility()">
+                    <span class="material-symbols-rounded" id="passIcon">visibility</span>
+                </button>
+            </div>
+
+            <div class="stagger-enter delay-3" style="display:flex; align-items:center; gap:12px; margin: 16px 0 24px;">
+                <input type="checkbox" id="rememberMe" style="width:18px; height:18px; accent-color: var(--md-sys-color-primary); cursor: pointer;">
+                <label for="rememberMe" style="font-size:14px; color:var(--md-sys-color-on-surface); cursor: pointer;">Keep me logged in</label>
+            </div>
+
+            <button class="m3-btn filled ripple-surface stagger-enter delay-4" onclick="attemptLogin()" id="loginBtn">
+                <span id="loginText">Access Dashboard</span>
+                <span class="material-symbols-rounded" id="loginIcon">arrow_forward</span>
+            </button>
+            <p id="authError" style="color: var(--md-sys-color-error); margin-top: 16px; font-size: 14px; opacity: 0; transition: 0.3s;">Invalid Credentials</p>
+        </div>
+    </div>
+
+    <!-- MAIN APPLICATION -->
+    <div id="app-layout">
+        <!-- Sidebar: Contact List -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2 style="font-family:'Google Sans'; font-size: 22px;">Chats</h2>
+                <div style="display:flex; gap: 8px;">
+                    <button class="icon-btn ripple-surface" onclick="promptAddChat()" title="Add Chat">
+                        <span class="material-symbols-rounded">add_circle</span>
+                    </button>
+                    <button class="icon-btn ripple-surface" onclick="handleLogout()" title="Logout">
+                        <span class="material-symbols-rounded">logout</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <div class="search-bar">
+                    <span class="material-symbols-rounded" style="color: var(--md-sys-color-on-surface-variant);">search</span>
+                    <input type="text" id="searchInput" placeholder="Search...">
+                </div>
+            </div>
+
+            <div class="contact-list" id="contactList">
+                <!-- Content injected via JS -->
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-area" id="chatArea">
+            <header class="chat-header">
+                <button class="icon-btn back-btn ripple-surface" onclick="closeChatMobile()">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                </button>
+                <div id="chatHeaderContent" style="display:flex; align-items:center; gap:12px; flex:1; opacity:0; transition:0.3s;">
+                    <div class="avatar" id="headerAvatar" style="width:40px; height:40px; font-size:16px;">A</div>
+                    <div>
+                        <div id="headerName" style="font-weight: 500; font-size: 16px;">Alice</div>
+                        <div id="headerId" style="font-size: 12px; opacity: 0.7;">Online</div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="chat-content" id="messagesContainer">
+                <div class="empty-state">
+                    <div style="width:120px; height:120px; margin-bottom:24px;">
+                        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%;">
+                            <rect width="100" height="100" rx="30" fill="#E6F7EF"/>
+                            <path d="M30 35C30 32.2386 32.2386 30 35 30H65C67.7614 30 70 32.2386 70 35V55C70 57.7614 67.7614 60 65 60H45L30 70V35Z" fill="#006C4C"/>
+                            <circle cx="42" cy="45" r="3" fill="white"/>
+                            <circle cx="50" cy="45" r="3" fill="white"/>
+                            <circle cx="58" cy="45" r="3" fill="white"/>
+                        </svg>
+                    </div>
+                    <h3 style="margin-bottom:8px; color:var(--md-sys-color-on-surface);">WhatsApp Logger</h3>
+                    <p>Select a conversation to view history</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // CONFIGURATION
+        const RENDER_BACKEND_URL = ""; 
+        const firebaseConfig = {
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
+        };
+        
+        // INIT FIREBASE
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        let messageUnsubscribe = null;
+        let activeChatId = null;
+        let isCurrentChatGroup = false;
+
+        // --- RIPPLE EFFECT ---
+        document.addEventListener('mousedown', function(e) {
+            const target = e.target.closest('.ripple-surface');
+            if (target) {
+                const rect = target.getBoundingClientRect();
+                const ripple = document.createElement('span');
+                ripple.className = 'ripple';
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.width = ripple.style.height = `${size}px`;
+                ripple.style.left = `${e.clientX - rect.left - size/2}px`;
+                ripple.style.top = `${e.clientY - rect.top - size/2}px`;
+                target.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 600);
+            }
+        });
+
+        // --- AUTH & INIT ---
+        window.onload = () => {
+            if(localStorage.getItem('wp_auth_expiry') > Date.now()) {
+                revealApp();
+            }
+        };
+
+        function togglePasswordVisibility() {
+            const input = document.getElementById('password');
+            const icon = document.getElementById('passIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.innerText = 'visibility_off';
+            } else {
+                input.type = 'password';
+                icon.innerText = 'visibility';
+            }
+        }
+
+        async function attemptLogin() {
+            const btn = document.getElementById('loginBtn');
+            const btnText = document.getElementById('loginText');
+            const btnIcon = document.getElementById('loginIcon');
+            const err = document.getElementById('authError');
+            
+            btn.disabled = true;
+            btnText.innerText = 'Verifying...';
+            btnIcon.innerText = 'refresh';
+            btnIcon.style.animation = 'spin 1s linear infinite';
+
+            try {
+                const response = await fetch(`${RENDER_BACKEND_URL}/api/verify`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value,
+                        password: document.getElementById('password').value
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if(data.success) {
+                    if(document.getElementById('rememberMe').checked) {
+                        localStorage.setItem('wp_auth_expiry', Date.now() + (3 * 24 * 60 * 60 * 1000));
+                    }
+                    setTimeout(revealApp, 600);
+                } else {
+                    throw new Error('Invalid');
+                }
+            } catch (e) {
+                err.style.opacity = '1';
+                err.innerText = e.message === 'Invalid' ? 'Incorrect username or password' : 'Server unavailable';
+                
+                btn.disabled = false;
+                btnText.innerText = 'Access Dashboard';
+                btnIcon.innerText = 'arrow_forward';
+                btnIcon.style.animation = 'none';
+                
+                btn.style.animation = 'shake 0.4s ease-in-out';
+                setTimeout(() => btn.style.animation = '', 400);
+            }
+        }
+
+        function revealApp() {
+            const auth = document.getElementById('auth-screen');
+            const app = document.getElementById('app-layout');
+            
+            auth.style.opacity = '0';
+            auth.style.pointerEvents = 'none';
+            setTimeout(() => auth.style.display = 'none', 600);
+
+            app.style.opacity = '1';
+            loadChats();
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('wp_auth_expiry');
+            location.reload();
+        }
+
+        // --- SKELETON GENERATORS ---
+        function renderContactSkeleton() {
+            const list = document.getElementById('contactList');
+            let html = '';
+            for(let i=0; i<6; i++) {
+                html += `
+                <div class="skel-contact fade-in" style="animation-delay: ${i*0.05}s">
+                    <div class="skeleton skel-avatar"></div>
+                    <div class="skel-text-col">
+                        <div class="skeleton" style="width:60%; height:16px;"></div>
+                        <div class="skeleton" style="width:40%; height:12px;"></div>
+                    </div>
+                </div>`;
+            }
+            list.innerHTML = html;
+        }
+
+        function renderChatSkeleton() {
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = `
+                <div class="skel-chat">
+                    <div class="skeleton skel-bubble skel-left"></div>
+                    <div class="skeleton skel-bubble skel-right" style="width:60%"></div>
+                    <div class="skeleton skel-bubble skel-left" style="width:30%"></div>
+                    <div class="skeleton skel-bubble skel-left" style="width:50%"></div>
+                    <div class="skeleton skel-bubble skel-right"></div>
+                </div>
+            `;
+        }
+
+        // --- CHAT LOGIC ---
+        async function loadChats() {
+            renderContactSkeleton();
+            
+            try {
+                const list = document.getElementById('contactList');
+                const snap = await db.collection('Chats').get();
+                
+                let chats = [];
+                const excludedIds = [];
+
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    if (data.lastActive && !excludedIds.includes(doc.id)) {
+                        chats.push({ id: doc.id, ...data });
+                    }
+                });
+
+                chats.sort((a, b) => b.lastActive - a.lastActive);
+                
+                list.innerHTML = '';
+                if(chats.length === 0) {
+                    list.innerHTML = `<div style="text-align:center; padding:32px; color:var(--md-sys-color-outline);">No chats found</div>`;
+                    return;
+                }
+
+                chats.forEach((chat, index) => {
+                    const isGroup = chat.id.includes('@g.us');
+                    let name, subText;
+
+                    if (isGroup) {
+                        name = (chat.displayName && chat.displayName !== 'Unknown') ? chat.displayName : "Group Chat";
+                        subText = "Group Chat";
+                    } else {
+                        const phone = chat.phoneNumber || chat.id.split('@')[0];
+                        name = (chat.displayName && chat.displayName !== 'Unknown') ? chat.displayName : phone;
+                        subText = (name === phone) ? chat.id.split('@')[0] : phone;
+                    }
+                    
+                    const time = formatTime(chat.lastActive);
+                    const colorIndex = (chat.id.charCodeAt(0) + chat.id.charCodeAt(chat.id.length-1)) % 5;
+                    const colors = ['#FFD8E4', '#D7F6E3', '#EADDFF', '#FDE2C4', '#DCECF9'];
+                    const textColors = ['#31111D', '#04210F', '#1D192B', '#2B1700', '#001E30'];
+
+                    const div = document.createElement('div');
+                    div.className = 'contact-item ripple-surface fade-in';
+                    div.style.animationDelay = `${index * 0.05}s`;
+                    div.dataset.id = chat.id;
+                    div.innerHTML = `
+                        <div class="avatar" style="background:${colors[colorIndex]}; color:${textColors[colorIndex]}">${isGroup ? '<span class="material-symbols-rounded">group</span>' : name.slice(0,1).toUpperCase()}</div>
+                        <div class="contact-info">
+                            <div class="contact-top">
+                                <span class="contact-name">${name}</span>
+                                <span class="contact-time">${time}</span>
+                            </div>
+                            <div class="contact-sub">${subText}</div>
+                        </div>
+                    `;
+                    div.onclick = () => openChat(chat.id, name, div, colors[colorIndex], textColors[colorIndex], isGroup);
+                    list.appendChild(div);
+                });
+
+            } catch (err) {
+                console.error("Error loading chats:", err);
+            }
+        }
+
+        function openChat(id, name, element, avatarBg, avatarColor, isGroup) {
+            document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
+            if(element) element.classList.add('active');
+            activeChatId = id;
+            isCurrentChatGroup = isGroup;
+
+            const chatArea = document.getElementById('chatArea');
+            chatArea.classList.add('active');
+
+            document.getElementById('headerAvatar').style.background = avatarBg || '#e0e0e0';
+            document.getElementById('headerAvatar').style.color = avatarColor || '#000';
+            document.getElementById('headerAvatar').innerHTML = isGroup ? '<span class="material-symbols-rounded">group</span>' : name.slice(0,1).toUpperCase();
+            document.getElementById('headerName').innerText = name;
+            document.getElementById('headerId').innerText = isGroup ? "Group Info" : id.split('@')[0];
+            document.getElementById('chatHeaderContent').style.opacity = '1';
+
+            renderChatSkeleton();
+            
+            if(messageUnsubscribe) messageUnsubscribe();
+
+            messageUnsubscribe = db.collection('Chats').doc(id).collection('Messages')
+                .orderBy('timestamp', 'asc')
+                .onSnapshot(snap => {
+                    renderMessages(snap);
+                });
+        }
+
+        function renderMessages(snap) {
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = '';
+            
+            if(snap.empty) {
+                container.innerHTML = '<div class="empty-state"><p>No messages recorded</p></div>';
+                return;
+            }
+
+            let lastDateStr = '';
+
+            snap.forEach(doc => {
+                const msg = doc.data();
+                const date = new Date(msg.timestamp * 1000);
+                const dateStr = getDateString(date);
+                
+                if(dateStr !== lastDateStr) {
+                    const div = document.createElement('div');
+                    div.className = 'date-divider';
+                    div.innerText = dateStr;
+                    container.appendChild(div);
+                    lastDateStr = dateStr;
+                }
+
+                const bubble = document.createElement('div');
+                bubble.className = `msg-bubble ${msg.fromMe ? 'msg-out' : 'msg-in'}`;
+                
+                const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                const showSenderName = !msg.fromMe && isCurrentChatGroup;
+
+                bubble.innerHTML = `
+                    ${showSenderName ? `<div class="msg-sender">${msg.senderName || 'Sender'}</div>` : ''}
+                    <div>${msg.text}</div>
+                    <div class="msg-meta">
+                        ${timeStr}
+                        ${msg.fromMe ? '<span class="material-symbols-rounded" style="font-size:14px; color:var(--md-sys-color-primary)">done_all</span>' : ''}
+                    </div>
+                `;
+                
+                container.appendChild(bubble);
+            });
+
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+
+        function closeChatMobile() {
+            document.getElementById('chatArea').classList.remove('active');
+            setTimeout(() => {
+                if(!document.querySelector('.chat-area.active')) {
+                    activeChatId = null;
+                }
+            }, 300);
+        }
+
+        function promptAddChat() {
+            const id = prompt("Enter WhatsApp ID (e.g. 123456789@s.whatsapp.net):");
+            if(id && id.includes('@')) {
+                db.collection('Chats').doc(id).set({
+                    displayName: 'Manual Add',
+                    id: id,
+                    lastActive: Math.floor(Date.now()/1000)
+                }, {merge:true});
+                setTimeout(loadChats, 1000);
+            }
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            document.querySelectorAll('.contact-item').forEach(el => {
+                const name = el.innerText.toLowerCase();
+                const id = el.dataset.id.toLowerCase();
+                el.style.display = (name.includes(val) || id.includes(val)) ? 'flex' : 'none';
+            });
+        });
+
+        function formatTime(ts) {
+            if (!ts) return '';
+            const date = new Date(ts * 1000);
+            const now = new Date();
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (date.toDateString() === now.toDateString()) {
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            } else if (date.toDateString() === yesterday.toDateString()) {
+                return 'Yesterday';
+            } else {
+                return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+            }
+        }
+
+        function getDateString(date) {
+            const now = new Date();
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            if (date.toDateString() === now.toDateString()) return 'Today';
+            if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+            return date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+        }
+
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes spin { to { transform: rotate(360deg); } }
+            @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        `;
+        document.head.appendChild(style);
+
+    </script>
+</body>
+</html>
