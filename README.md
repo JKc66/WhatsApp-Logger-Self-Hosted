@@ -2,6 +2,8 @@
 
 A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (including deleted ones) via a linked device connection and stores them in your own Firebase Firestore database.
 
+### Check <a href="https://amit.is-a.dev/logger">guide</a> for detailed installation process.
+
 ## 🚀 Features
 
 * **Anti-Delete**: Logs messages instantly, preserving them even if the sender deletes them.
@@ -35,15 +37,24 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
     * Go to the **Rules** tab in Firestore.
     * Replace the rules with the following (allows anyone to read, but only backend with Admin SDK can write):
         ```javascript
-        rules_version = '2';
-        service cloud.firestore {
-          match /databases/{database}/documents {
-            match /{document=**} {
-              allow read: if true;  // Frontend needs read access
-              allow write: if false; // Only Backend (Admin SDK) can write
-            }
-          }
-        }
+         rules_version = '2';
+         service cloud.firestore {
+           match /databases/{database}/documents {
+             match /{document=**} {
+               // 1. Allow Read: Essential for your HTML page to fetch chats.
+               allow read: if true;
+         
+               // 2. Allow Update: Enables the "Rename Chat" feature from the frontend.
+               // This allows updating existing documents (like changing the name)
+               // but prevents creating NEW documents or Deleting them.
+               allow update: if true;
+         
+               // 3. Block Create/Delete: Only the Backend (Render) can create new messages
+               // or delete them. This prevents random people from injecting fake chats.
+               allow create, delete: if false;
+             }
+           }
+         }
         ```
 4.  **Get Backend Credentials (Service Account)**:
     * Go to **Project Settings** (Gear icon) -> **Service accounts**.
