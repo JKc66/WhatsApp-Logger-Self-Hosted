@@ -100,9 +100,9 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
 
 ## Step 4: Setup Frontend (The Viewer)
 
-1.  Download the `chat.html` file from this repository and rename it to `index.html`.
+1.  Download the `index.html` file from this repository.
 2.  Open `index.html` in a text editor (Notepad, VS Code, etc.).
-3.  Locate the Configuration section (around line 370).
+3.  Locate the Configuration section (around line 675).
 4.  **Fill in the details**:
     * `RENDER_BACKEND_URL`: Your Render URL (e.g., `https://your-app.onrender.com` - **No trailing slash**).
     * `firebaseConfig`: The keys you copied in Step 1.5.
