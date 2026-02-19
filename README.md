@@ -3,7 +3,6 @@
 A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (including deleted ones) via a linked device connection and stores them in your own Firebase Firestore database.
 
 ### Check <a href="https://amit.is-a.dev/logger">guide</a> for detailed installation process.
-### Note: Use `index_auth.html` for better security. 
 
 ## 🚀 Features
 
