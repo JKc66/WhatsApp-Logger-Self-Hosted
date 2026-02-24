@@ -4,6 +4,10 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
 
 ### Check <a href="https://amit.is-a.dev/logger">guide</a> for detailed installation process.
 
+### Important notes:
+ * It is recommended to download the **web app** after the publication of webpage for better security. 
+ * It is recommended to use **PIN** or **Biometric authentication** inside web app. Find the authentication options in Settings
+
 ## 🚀 Features
 
 * **Anti-Delete**: Logs messages instantly, preserving them even if the sender deletes them.
