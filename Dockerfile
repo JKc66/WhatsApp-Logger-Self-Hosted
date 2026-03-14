@@ -1,9 +1,6 @@
-FROM node:20-slim
+FROM oven/bun:1
 
-# Install system dependencies
-# We add git because some npm packages require it to fetch dependencies.
-# We add python3, make, and g++ because some crypto libraries used by Baileys 
-# might need to compile native code.
+# Install system dependencies required by some Baileys crypto libraries
 RUN apt-get update && apt-get install -y \
     git \
     python3 \
@@ -15,10 +12,9 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /usr/src/app
 
 # Install dependencies
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-COPY package*.json ./
+COPY package.json bun.lockb* ./
 
-RUN npm install
+RUN bun install
 
 # Bundle app source
 COPY . .
@@ -27,4 +23,4 @@ COPY . .
 EXPOSE 3000
 
 # Start command
-CMD [ "node", "index.js" ]
+CMD [ "bun", "run", "index.js" ]
